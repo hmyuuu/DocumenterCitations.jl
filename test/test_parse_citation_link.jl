@@ -1,13 +1,15 @@
 using Test
 using DocumenterCitations: CitationLink
 using Markdown
+import MarkdownAST
 using Logging
 
 
 function _link(text::String)
     md = Markdown.parse(text)
-    link = md.content[1].content[1]
-    @assert link isa Markdown.Link
+    ast = convert(MarkdownAST.Node, md)
+    link = first(first(ast.children).children)
+    @assert link.element isa MarkdownAST.Link
     return link
 end
 
@@ -95,10 +97,10 @@ end
         end
     end
     msgs = [
-        "Error: The @cite link.url does not match required regex: @citenocommand",
-        "Error: The @cite link.url does not match required regex:  @cite ",
+        "Error: The @cite link destination does not match required regex: @citenocommand",
+        "Error: The @cite link destination does not match required regex:  @cite ",
         "Error: Invalid bibtex key: see GoerzQ2022",
-        "Error: The @cite link.url does not match required regex: @CITE"
+        "Error: The @cite link destination does not match required regex: @CITE"
     ]
     for msg in msgs
         @test msg in test_logger
@@ -113,15 +115,21 @@ end
     @test cit.style ≡ nothing
     @test cit.keys == ["GoerzQ2022"]
     @test cit.note ≡ nothing
-    @test cit.link_text == Any["Semi-AD paper"]
+    @test cit.link_text == MarkdownAST.@ast MarkdownAST.Link("@cite GoerzQ2022", "") do
+        MarkdownAST.Text("Semi-AD paper")
+    end
 
     cit = _CitationLink("[*Semi*-AD paper](@cite GoerzQ2022)")
     @test cit.cmd == :cite
     @test cit.style ≡ nothing
     @test cit.keys == ["GoerzQ2022"]
     @test cit.note ≡ nothing
-    @test cit.link_text[1] isa Markdown.Italic
-    @test cit.link_text[2] == "-AD paper"
+    @test cit.link_text == MarkdownAST.@ast MarkdownAST.Link("@cite GoerzQ2022", "") do
+        MarkdownAST.Emph() do
+            MarkdownAST.Text("Semi")
+        end
+        MarkdownAST.Text("-AD paper")
+    end
 
 end
 
@@ -139,8 +147,8 @@ end
         end
     end
     msgs = [
-        "Error: The @cite link.url does not match required regex: @citet GoerzQ2022",
-        "Error: The @cite link.url does not match required regex: @cite BrifNJP2010, GoerzQ2022",
+        "Error: The @cite link destination does not match required regex: @citet GoerzQ2022",
+        "Error: The @cite link destination does not match required regex: @cite BrifNJP2010, GoerzQ2022",
     ]
     for msg in msgs
         @test msg in test_logger

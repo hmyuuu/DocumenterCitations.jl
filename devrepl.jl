@@ -18,6 +18,7 @@ cd(@__DIR__)
 Pkg.activate("test")
 
 function _instantiate()
+    Pkg.add(name="Documenter", rev="master")
     Pkg.develop(path=".")
 end
 

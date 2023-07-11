@@ -20,22 +20,29 @@ abstract type ExpandBibliography <: Builder.DocumentPipeline end
 
 Selectors.order(::Type{ExpandBibliography}) = 2.12  # after CollectCitations
 
-function Selectors.runner(::Type{ExpandBibliography}, doc::Documents.Document)
+function Selectors.runner(::Type{ExpandBibliography}, doc::Documenter.Document)
     Documenter.Builder.is_doctest_only(doc, "ExpandBibliography") && return
-    @info "ExpandBibliography: expanding `@bibliography` blocks."
-    for src in keys(doc.blueprint.pages)
-        page = doc.blueprint.pages[src]
+    expand_bibliography(doc)
+end
+
+# Expand all @bibliography blocks in the document
+function expand_bibliography(doc::Documenter.Document)
+    for (src, page) in doc.blueprint.pages
+        @info "Expanding bibliography in $src"
         empty!(page.globals.meta)
-        for element in page.elements
-            if Expanders.iscode(element, r"^@bibliography")
-                Selectors.dispatch(BibliographyBlock, element, page, doc)
-            end
-        end
+        expand_bibliography(doc, page, page.mdast)
     end
 end
 
-abstract type BibliographyBlock <: Selectors.AbstractSelector end
-
+# Expand all @bibliography blocks in one page
+function expand_bibliography(doc::Documenter.Document, page, mdast::MarkdownAST.Node)
+    for node in AbstractTrees.PreOrderDFS(mdast)
+        if node.element isa MarkdownAST.CodeBlock &&
+           occursin(r"^@bibliography", node.element.info)
+            expand_bibliography(node, page.globals.meta, page, doc)
+        end
+    end
+end
 
 """Format the full reference for an entry in a `@bibliography` block.
 
@@ -164,8 +171,8 @@ bib_sorting(::Val{:alpha}) = :nyt
 function parse_bibliography_block(block, doc, page)
     fields = Dict{Symbol,Any}()
     lines = String[]
-    for (ex, str) in Documenter.Utilities.parseblock(block, doc, page)
-        if Utilities.isassign(ex)
+    for (ex, str) in Documenter.parseblock(block, doc, page)
+        if Documenter.isassign(ex)
             fields[ex.args[1]] = Core.eval(Main, ex.args[2])
         else
             line = String(strip(str))
@@ -183,9 +190,9 @@ function parse_bibliography_block(block, doc, page)
         if field ∉ allowed_fields
             warn_loc = "N/A"
             if (doc ≢ nothing) && (page ≢ nothing)
-                warn_loc = Documenter.Utilities.locrepr(
+                warn_loc = Documenter.locrepr(
                     page.source,
-                    Documenter.Utilities.find_block_in_file(block, page.source)
+                    Documenter.find_block_in_file(block, page.source)
                 )
             end
             @warn("Invalid field $field ∉ $allowed_fields in $warn_loc")
@@ -195,11 +202,13 @@ function parse_bibliography_block(block, doc, page)
     return fields, lines
 end
 
-
-function Selectors.runner(::Type{BibliographyBlock}, x, page, doc)
+# Expand a single @bibliography block
+function expand_bibliography(node::MarkdownAST.Node, meta, page, doc)
+    @assert node.element isa MarkdownAST.CodeBlock
+    @assert occursin(r"^@bibliography", node.element.info)
 
     @info "Expanding bibliography in $(page.source)."
-    block = x.code
+    block = node.element.code
     @debug "Evaluating @bibliography block" block
 
     bib = doc.plugins[CitationBibliography]
@@ -317,6 +326,6 @@ function Selectors.runner(::Type{BibliographyBlock}, x, page, doc)
     end
     html *= "\n</$tag></div>"
 
-    page.mapping[x] = Documents.RawNode(:html, html)
+    node.element = Documenter.RawNode(:html, html)
 
 end

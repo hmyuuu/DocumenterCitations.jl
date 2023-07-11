@@ -167,9 +167,17 @@ end
 function italicize_md_et_al(text; et_al_in="*et al.*", et_al_out="et al.")
     if occursin(et_al_in, text)
         parts = split(text, et_al_in; limit=2)
-        return [parts[1], Markdown.Italic(Any[et_al_out]), parts[2]]
+        return MarkdownAST.@ast MarkdownAST.Paragraph() do
+            MarkdownAST.Text(parts[1])
+            MarkdownAST.Emph() do
+                MarkdownAST.Text(et_al_out)
+            end
+            MarkdownAST.Text(parts[2])
+        end
     else
-        return text
+        return MarkdownAST.@ast MarkdownAST.Paragraph() do
+            MarkdownAST.Text(text)
+        end
     end
 end
 

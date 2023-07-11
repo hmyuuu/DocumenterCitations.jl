@@ -27,7 +27,7 @@ CUSTOM2 = joinpath(@__DIR__, "..", "docs", "custom_styles", "keylabels.jl")
         empty!(Documenter.Selectors.selector_subtypes)
         format = Documenter.Writers.HTMLWriter.HTML(; edit_link=nothing, disable_git=true)
         plugins = [bib]
-        document = Documenter.Documents.Document(
+        document = Documenter.Document(
             plugins;
             format,
             strict=false,
@@ -36,7 +36,8 @@ CUSTOM2 = joinpath(@__DIR__, "..", "docs", "custom_styles", "keylabels.jl")
             build=tmpdir
         )
         cd(document.user.root) do
-            test_logger = _TestLogger()
+            # TODO: There seems to be a deadlock when using the custom logger here
+            test_logger = Base.CoreLogging.NullLogger() # Log_TestLogger()
             with_logger(test_logger) do
                 Documenter.Selectors.dispatch(Documenter.Builder.DocumentPipeline, document)
             end

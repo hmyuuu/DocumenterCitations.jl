@@ -1,4 +1,4 @@
-import DocumenterCitations
+import DocumenterCitations, MarkdownAST
 
 # we use some (undocumented) internal helper functions for formatting...
 using DocumenterCitations: format_names, tex2unicode, italicize_md_et_al
@@ -27,6 +27,10 @@ function DocumenterCitations.format_citation(
             tex2unicode
         capitalize && (names = uppercase(names[1]) * names[2:end])
         link_text = italicize_md_et_al("$names $link_text")
+    else
+        link_text = MarkdownAST.@ast MarkdownAST.Paragraph() do
+            MarkdownAST.Text(link_text)
+        end
     end
     return link_text
 end

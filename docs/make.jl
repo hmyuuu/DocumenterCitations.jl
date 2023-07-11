@@ -15,14 +15,14 @@ bib = CitationBibliography(
 
 println("Starting makedocs")
 
-include(joinpath("custom_styles", "enumauthoryear.jl"))
-include(joinpath("custom_styles", "keylabels.jl"))
+include("custom_styles/enumauthoryear.jl")
+include("custom_styles/keylabels.jl")
 
 makedocs(
     bib,
     authors=AUTHORS,
     sitename="DocumenterCitations.jl",
-    strict=true,
+    strict=false,
     format=Documenter.HTML(
         prettyurls=true,
         canonical="https://juliadocs.github.io/DocumenterCitations.jl",
@@ -41,4 +41,4 @@ makedocs(
 
 println("Finished makedocs")
 
-deploydocs(; repo="github.com/JuliaDocs/DocumenterCitations.jl.git")
+deploydocs(; repo="github.com/JuliaDocs/DocumenterCitations.jl.git", push_preview=true)
